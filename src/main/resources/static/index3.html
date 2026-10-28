@@ -6,9 +6,14 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 600px;
+            max-width: 900px;
             margin: 2rem auto;
             padding: 0 1rem;
+        }
+        .contenido {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 220px;
+            gap: 1rem;
         }
         .panel {
             border: 1px solid #ccc;
@@ -33,6 +38,21 @@
             padding: 4px 6px;
             border-bottom: 1px solid #eee;
             font-size: 0.95rem;
+        }
+        #participantes {
+            list-style-type: none;
+            padding: 8px;
+            margin: 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        #participantes li {
+            padding: 4px 6px;
+            border-bottom: 1px solid #eee;
+        }
+        #participantes li:last-child {
+            border-bottom: none;
         }
         .sistema {
             color: #666;
@@ -77,11 +97,19 @@
         </div>
         <hr style="margin: 1rem 0; border: none; border-top: 1px solid #ddd;">
         
-        <ul id="registro"></ul>
+        <div class="contenido">
+            <div>
+                <ul id="registro"></ul>
 
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <input type="text" id="campoMensaje" placeholder="Escribe un mensaje..." style="flex-grow: 1;" />
-            <button onclick="enviarMensaje()">Enviar</button>
+                <div style="display: flex; gap: 8px; margin-top: 10px;">
+                    <input type="text" id="campoMensaje" placeholder="Escribe un mensaje..." style="flex-grow: 1;" />
+                    <button onclick="enviarMensaje()">Enviar</button>
+                </div>
+            </div>
+            <aside>
+                <h3>Usuarios activos (<span id="cantidadUsuarios">0</span>)</h3>
+                <ul id="participantes"></ul>
+            </aside>
         </div>
     </div>
 
@@ -110,7 +138,7 @@
             };
 
             socket.onmessage = (evento) => {
-                agregarLog(evento.data);
+                manejarMensaje(evento.data);
             };
 
             socket.onclose = () => {
@@ -139,6 +167,7 @@
             document.getElementById("chatSection").style.display = "none";
             document.getElementById("loginSection").style.display = "block";
             document.getElementById("registro").innerHTML = "";
+            actualizarParticipantes([]);
         }
 
         function agregarLog(texto) {
@@ -150,6 +179,30 @@
             const reg = document.getElementById("registro");
             reg.appendChild(li);
             reg.scrollTop = reg.scrollHeight; // Auto-scroll al último mensaje
+        }
+
+        function manejarMensaje(texto) {
+            try {
+                const mensaje = JSON.parse(texto);
+                if (mensaje.tipo === "presencia" && Array.isArray(mensaje.usuarios)) {
+                    actualizarParticipantes(mensaje.usuarios);
+                    return;
+                }
+            } catch (error) {
+                // Los mensajes de chat son texto plano, no JSON.
+            }
+            agregarLog(texto);
+        }
+
+        function actualizarParticipantes(usuarios) {
+            const lista = document.getElementById("participantes");
+            lista.innerHTML = "";
+            usuarios.forEach((usuario) => {
+                const li = document.createElement("li");
+                li.textContent = usuario;
+                lista.appendChild(li);
+            });
+            document.getElementById("cantidadUsuarios").textContent = usuarios.length;
         }
 
         // Enviar al presionar ENTER

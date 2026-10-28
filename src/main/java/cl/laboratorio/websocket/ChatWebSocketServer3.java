@@ -8,6 +8,7 @@ import jakarta.websocket.Session;
 import jakarta.websocket.server.ServerEndpoint;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ public class ChatWebSocketServer3 {
 
         usuariosActivos.put(sesion, nombre);
         System.out.println("Usuario conectado: " + nombre + " [ID Sesión: " + sesion.getId() + "]");
+        difundirPresencia();
         difundir("[Sistema]: " + nombre + " se ha unido a la sala.");
     }
 
@@ -49,6 +51,7 @@ public class ChatWebSocketServer3 {
         String nombre = usuariosActivos.remove(sesion);
         if (nombre != null) {
             System.out.println("Usuario desconectado: " + nombre);
+            difundirPresencia();
             difundir("[Sistema]: " + nombre + " ha salido de la sala.");
         }
     }
@@ -56,6 +59,9 @@ public class ChatWebSocketServer3 {
     @OnError
     public void alOcurrirError(Session sesion, Throwable error) {
         System.err.println("Error en sesión " + (sesion != null ? sesion.getId() : "desconocida") + ": " + error.getMessage());
+        if (sesion != null && usuariosActivos.remove(sesion) != null) {
+            difundirPresencia();
+        }
     }
 
     private void difundir(String texto) {
@@ -68,5 +74,28 @@ public class ChatWebSocketServer3 {
                 }
             }
         }
+    }
+
+    private void difundirPresencia() {
+        List<String> nombres = new ArrayList<>(usuariosActivos.values());
+        Collections.sort(nombres);
+
+        StringBuilder mensaje = new StringBuilder("{\"tipo\":\"presencia\",\"usuarios\":[");
+        for (int i = 0; i < nombres.size(); i++) {
+            if (i > 0) {
+                mensaje.append(',');
+            }
+            mensaje.append('"').append(escaparJson(nombres.get(i))).append('"');
+        }
+        mensaje.append("]}");
+        difundir(mensaje.toString());
+    }
+
+    private String escaparJson(String texto) {
+        return texto
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 }
