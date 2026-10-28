@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cliente WebSocket</title>
+</head>
+<body>
+    <h2>Consola de Mensajería WebSocket</h2>
+    <input type="text" id="campoMensaje" placeholder="Escribe un mensaje..." />
+    <button onclick="enviar()">Enviar</button>
+    <ul id="registro"></ul>
+
+    <script>
+        // URI con esquema ws:// (o wss:// para WebSocket sobre TLS)
+        const socket = new WebSocket("ws://localhost:8080/ws/chat");
+
+        socket.onopen = (evento) => {
+            console.log("Handshake completado. Canal abierto.");
+            agregarLog("Conectado al servidor WebSocket.");
+        };
+
+        socket.onmessage = (evento) => {
+            console.log("Frame recibido:", evento.data);
+            agregarLog(evento.data);
+        };
+
+        socket.onclose = (evento) => {
+            console.warn(`Canal cerrado. Código: ${evento.code}, Razón: ${evento.reason}`);
+            agregarLog("Conexión cerrada.");
+        };
+
+        socket.onerror = (error) => {
+            console.error("Error en conexión WebSocket:", error);
+        };
+
+        function enviar() {
+            const input = document.getElementById("campoMensaje");
+            if (socket.readyState === WebSocket.OPEN && input.value.trim() !== "") {
+                socket.send(input.value);
+                input.value = "";
+            }
+        }
+
+        function agregarLog(mensaje) {
+            const li = document.createElement("li");
+            li.textContent = mensaje;
+            document.getElementById("registro").appendChild(li);
+        }
+    </script>
+</body>
+</html>

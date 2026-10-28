@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Laboratorio WebSockets</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2rem; }
+        #registro { list-style-type: none; padding: 0; max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
+        #registro li { padding: 4px 0; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <h2>Chat en Tiempo Real (WebSocket + Grizzly)</h2>
+    <input type="text" id="mensaje" placeholder="Escribe un mensaje..." style="width: 250px;" />
+    <button onclick="enviar()">Enviar</button>
+
+    <ul id="registro"></ul>
+
+    <script>
+        // Deducción dinámica del protocolo y host: ws:// o wss:// según si se sirve por http o https
+        //const proto = window.location.protocol === "https:" ? "wss://" : "ws://";
+        //const wsUri = proto + window.location.host + "/ws/chat";        
+        const socket = new WebSocket("ws://localhost:8081/ws/chat");
+        //const socket = new WebSocket(wsUri);
+
+        socket.onopen = () => agregarLog("[Sistema]: Conectado al canal WebSocket.");
+        socket.onmessage = (e) => agregarLog(e.data);
+        socket.onclose = () => agregarLog("[Sistema]: Desconectado.");
+        socket.onerror = (err) => console.error("Error WebSocket:", err);
+
+        function enviar() {
+            const input = document.getElementById("mensaje");
+            if (socket.readyState === WebSocket.OPEN && input.value.trim() !== "") {
+                socket.send(input.value);
+                input.value = "";
+            }
+        }
+
+        function agregarLog(texto) {
+            const li = document.createElement("li");
+            li.textContent = texto;
+            document.getElementById("registro").appendChild(li);
+        }
+    </script>
+</body>
+</html>

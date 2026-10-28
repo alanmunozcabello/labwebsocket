@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Ejecutar Servidor WebSocket",
+            "request": "launch",
+            "mainClass": "cl.laboratorio.websocket.Main",
+            "projectName": "WEBSOCKET"
+        }
+    ]
+}
