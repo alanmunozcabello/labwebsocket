@@ -2,17 +2,35 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Laboratorio WebSockets - Identificación</title>
+    <title>Laboratorio WebSockets - Opción 3: Heartbeat por Actividad</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 900px;
+            max-width: 960px;
             margin: 2rem auto;
             padding: 0 1rem;
+            color: #333;
+        }
+        .header-box {
+            background: linear-gradient(135deg, #0052a3, #007acc);
+            color: white;
+            padding: 1.2rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.2rem;
+        }
+        .header-box h2 { margin: 0 0 0.5rem 0; font-size: 1.5rem; }
+        .header-box p  { margin: 0; font-size: 0.95rem; opacity: 0.95; line-height: 1.4; }
+        .badge-info {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-top: 6px;
         }
         .contenido {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 220px;
+            grid-template-columns: minmax(0,1fr) 240px;
             gap: 1rem;
         }
         .panel {
@@ -20,25 +38,26 @@
             border-radius: 8px;
             padding: 1.5rem;
             margin-bottom: 1rem;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
         }
-        #chatSection {
-            display: none;
-        }
+        #chatSection { display: none; }
         #registro {
             list-style-type: none;
-            padding: 0;
-            max-height: 320px;
+            padding: 8px;
+            max-height: 340px;
             overflow-y: auto;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
-            padding: 8px;
             background: #fafafa;
         }
         #registro li {
-            padding: 4px 6px;
+            padding: 6px 8px;
             border-bottom: 1px solid #eee;
             font-size: 0.95rem;
+            line-height: 1.4;
         }
+        #registro li:last-child { border-bottom: none; }
         #participantes {
             list-style-type: none;
             padding: 8px;
@@ -46,172 +65,288 @@
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             background: #fafafa;
+            min-height: 150px;
         }
         #participantes li {
-            padding: 4px 6px;
+            padding: 6px 8px;
             border-bottom: 1px solid #eee;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        #participantes li:last-child {
-            border-bottom: none;
+        #participantes li:last-child { border-bottom: none; }
+        .user-dot {
+            width: 8px; height: 8px;
+            background-color: #28a745;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
         }
-        .sistema {
-            color: #666;
-            font-style: italic;
-        }
+        .sistema        { color: #666; font-style: italic; background: #f3f3f3; border-left: 3px solid #007acc; }
+        .sistema-alerta { color: #a00; font-style: italic; background: #fee;    border-left: 3px solid #c00; }
         input[type="text"] {
-            padding: 8px;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 9px 12px; font-size: 1rem;
+            border: 1px solid #ccc; border-radius: 4px;
         }
         button {
-            padding: 8px 16px;
-            font-size: 1rem;
-            background-color: #0066cc;
-            color: white;
-            border: none;
+            padding: 9px 16px; font-size: 1rem;
+            background-color: #0066cc; color: white;
+            border: none; border-radius: 4px;
+            cursor: pointer; transition: background 0.2s;
+        }
+        button:hover       { background-color: #0052a3; }
+        button:disabled    { background-color: #aaa; cursor: not-allowed; }
+
+        /* Barra de inactividad */
+        #barraContenedor {
+            margin-top: 6px;
+            background: #e0e0e0;
             border-radius: 4px;
-            cursor: pointer;
+            height: 8px;
+            overflow: hidden;
         }
-        button:hover {
-            background-color: #0052a3;
+        #barraActividad {
+            height: 100%;
+            width: 100%;
+            background: #28a745;
+            transition: width 0.5s linear, background 0.5s;
+            border-radius: 4px;
         }
+        #barraActividad.advertencia { background: #ffc107; }
+        #barraActividad.peligro     { background: #dc3545; }
+
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 0.85rem; padding: 3px 8px; border-radius: 12px;
+            background-color: #e8f5e9; color: #2e7d32; font-weight: 500;
+        }
+        #btnPong { background-color: #28a745; }
+        #btnPong:hover { background-color: #1e7e34; }
     </style>
 </head>
 <body>
 
-    <h2>Chat con Registro de Usuario</h2>
-
-    <!-- Pantalla 1: Ingreso de Nombre -->
-    <div id="loginSection" class="panel">
-        <label for="inputNombre"><strong>Ingresa tu nombre para entrar al chat:</strong></label><br><br>
-        <input type="text" id="inputNombre" placeholder="Tu nombre o alias..." style="width: 70%;" autofocus />
-        <button onclick="conectarAlChat()">Entrar</button>
+    <div class="header-box">
+        <h2>Laboratorio WebSockets - Opción 3</h2>
+        <p><strong>Heartbeat basado en actividad del usuario</strong> (sin PING/PONG de protocolo)</p>
+        <div class="badge-info">
+            ⏱️ Timeout de inactividad: 30s &nbsp;|&nbsp;
+            💬 Enviar mensaje o pulsar "Estoy aquí" reinicia el temporizador
+        </div>
     </div>
 
-    <!-- Pantalla 2: Interfaz del Chat (Oculta al inicio) -->
+    <!-- Pantalla 1: Login -->
+    <div id="loginSection" class="panel">
+        <label for="inputNombre"><strong>Ingresa tu nombre o alias para entrar a la sala:</strong></label><br><br>
+        <input type="text" id="inputNombre" placeholder="Ej: Juan, Maria..." style="width:60%;" autofocus />
+        <button onclick="conectarAlChat()">Conectar al Chat</button>
+    </div>
+
+    <!-- Pantalla 2: Chat -->
     <div id="chatSection" class="panel">
-        <div>
-            Usuario conectado: <strong id="lblUsuario"></strong>
-            <button onclick="desconectar()" style="float: right; background-color: #cc3300;">Salir</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+                Usuario: <strong id="lblUsuario"></strong> &nbsp;
+                <span class="status-pill" id="estadoPill">
+                    <span class="user-dot"></span> Conectado
+                </span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="btnPong" onclick="enviarPong()">👋 Estoy aquí</button>
+                <button onclick="desconectar()" style="background-color:#cc3300;">Salir</button>
+            </div>
         </div>
-        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #ddd;">
-        
+
+        <!-- Barra visual de inactividad -->
+        <div style="margin-top:10px; font-size:0.8rem; color:#666;">
+            Tiempo restante antes de ser desconectado por inactividad:
+            <span id="lblContador" style="font-weight:600;"></span>
+        </div>
+        <div id="barraContenedor">
+            <div id="barraActividad"></div>
+        </div>
+
+        <hr style="margin:1rem 0; border:none; border-top:1px solid #ddd;">
+
         <div class="contenido">
             <div>
                 <ul id="registro"></ul>
-
-                <div style="display: flex; gap: 8px; margin-top: 10px;">
-                    <input type="text" id="campoMensaje" placeholder="Escribe un mensaje..." style="flex-grow: 1;" />
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <input type="text" id="campoMensaje"
+                           placeholder="Escribe un mensaje (también reinicia el temporizador)..."
+                           style="flex-grow:1;" />
                     <button onclick="enviarMensaje()">Enviar</button>
                 </div>
             </div>
             <aside>
-                <h3>Usuarios activos (<span id="cantidadUsuarios">0</span>)</h3>
+                <h3 style="margin-top:0;">Usuarios activos (<span id="cantidadUsuarios">0</span>)</h3>
                 <ul id="participantes"></ul>
             </aside>
         </div>
     </div>
 
     <script>
-        let socket = null;
-        let nombreUsuario = "";
+        // ── Configuración (debe coincidir con el servidor) ──────────────────
+        const TIMEOUT_INACTIVIDAD_MS = 30_000; // 30 segundos
+        const PONG_TEXTO = "__pong__";
 
+        // ── Estado ──────────────────────────────────────────────────────────
+        let socket        = null;
+        let nombreUsuario = "";
+        let ultimaAccion  = 0;    // timestamp de la última actividad local
+        let timerBarra    = null; // setInterval para la barra visual
+
+        // ── Conexión ────────────────────────────────────────────────────────
         function conectarAlChat() {
             const input = document.getElementById("inputNombre");
             nombreUsuario = input.value.trim();
+            if (!nombreUsuario) { alert("Por favor ingresa un nombre válido."); return; }
 
-            if (!nombreUsuario) {
-                alert("Por favor ingresa un nombre válido.");
-                return;
-            }
+            const host  = window.location.hostname || "localhost";
+            const wsUri = "ws://" + host + ":8081/ws/chat?nombre=" + encodeURIComponent(nombreUsuario);
 
-            // Construir URL con el parámetro ?nombre= apuntando al puerto 8081
-            const wsUri = "ws://localhost:8081/ws/chat?nombre=" + encodeURIComponent(nombreUsuario);
             socket = new WebSocket(wsUri);
 
             socket.onopen = () => {
                 document.getElementById("loginSection").style.display = "none";
-                document.getElementById("chatSection").style.display = "block";
+                document.getElementById("chatSection").style.display  = "block";
                 document.getElementById("lblUsuario").textContent = nombreUsuario;
                 document.getElementById("campoMensaje").focus();
+                registrarActividad();
+                iniciarBarra();
             };
 
-            socket.onmessage = (evento) => {
-                manejarMensaje(evento.data);
+            socket.onmessage = (ev) => manejarMensaje(ev.data);
+
+            socket.onclose = (ev) => {
+                detenerBarra();
+                const motivo = ev.reason ? (" - " + ev.reason) : "";
+                agregarLog("[Sistema]: Conexión cerrada (Código: " + ev.code + motivo + ")", "sistema-alerta");
+                const pill = document.getElementById("estadoPill");
+                pill.style.backgroundColor = "#ffebee";
+                pill.style.color = "#c62828";
+                pill.innerHTML = "🔴 Desconectado";
+                document.getElementById("btnPong").disabled = true;
             };
 
-            socket.onclose = () => {
-                agregarLog("[Sistema]: Conexión cerrada.");
-            };
-
-            socket.onerror = (err) => {
-                console.error("Error WebSocket:", err);
-                alert("No se pudo conectar al servidor WebSocket en el puerto 8081.");
-            };
+            socket.onerror = () => agregarLog("[Sistema]: Error en el canal WebSocket.", "sistema-alerta");
         }
 
+        // ── Actividad ────────────────────────────────────────────────────────
+
+        function registrarActividad() {
+            ultimaAccion = Date.now();
+        }
+
+        /** Envía "__pong__" al servidor como señal de vida. */
+        function enviarPong() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(PONG_TEXTO);
+                registrarActividad();
+                const btn = document.getElementById("btnPong");
+                btn.textContent = "✅ Señal enviada";
+                setTimeout(() => { btn.textContent = "👋 Estoy aquí"; }, 1200);
+            }
+        }
+
+        /** Envía un mensaje de chat (también cuenta como actividad). */
         function enviarMensaje() {
             const input = document.getElementById("campoMensaje");
-            if (socket && socket.readyState === WebSocket.OPEN && input.value.trim() !== "") {
-                socket.send(input.value);
+            if (socket && socket.readyState === WebSocket.OPEN && input.value.trim()) {
+                socket.send(input.value.trim());
+                registrarActividad();
                 input.value = "";
                 input.focus();
             }
         }
 
+        // ── Barra de inactividad ─────────────────────────────────────────────
+
+        function iniciarBarra() {
+            detenerBarra();
+            timerBarra = setInterval(actualizarBarra, 500);
+        }
+
+        function detenerBarra() {
+            if (timerBarra) { clearInterval(timerBarra); timerBarra = null; }
+        }
+
+        function actualizarBarra() {
+            const transcurrido = Date.now() - ultimaAccion;
+            const restante     = Math.max(0, TIMEOUT_INACTIVIDAD_MS - transcurrido);
+            const pct          = (restante / TIMEOUT_INACTIVIDAD_MS) * 100;
+
+            const barra   = document.getElementById("barraActividad");
+            const lblCont = document.getElementById("lblContador");
+
+            barra.style.width = pct + "%";
+            lblCont.textContent = Math.ceil(restante / 1000) + "s";
+
+            barra.className = "";
+            if      (pct <= 33) barra.classList.add("peligro");
+            else if (pct <= 66) barra.classList.add("advertencia");
+        }
+
+        // ── Desconexión manual ───────────────────────────────────────────────
         function desconectar() {
-            if (socket) {
-                socket.close();
-            }
-            document.getElementById("chatSection").style.display = "none";
+            detenerBarra();
+            if (socket) socket.close();
+            document.getElementById("chatSection").style.display  = "none";
             document.getElementById("loginSection").style.display = "block";
             document.getElementById("registro").innerHTML = "";
             actualizarParticipantes([]);
+            document.getElementById("btnPong").disabled = false;
+            const pill = document.getElementById("estadoPill");
+            pill.style.backgroundColor = "";
+            pill.style.color = "";
+            pill.innerHTML = '<span class="user-dot"></span> Conectado';
         }
 
-        function agregarLog(texto) {
-            const li = document.createElement("li");
-            li.textContent = texto;
-            if (texto.startsWith("[Sistema]")) {
-                li.className = "sistema";
-            }
-            const reg = document.getElementById("registro");
-            reg.appendChild(li);
-            reg.scrollTop = reg.scrollHeight; // Auto-scroll al último mensaje
-        }
-
+        // ── Mensajes entrantes ───────────────────────────────────────────────
         function manejarMensaje(texto) {
             try {
-                const mensaje = JSON.parse(texto);
-                if (mensaje.tipo === "presencia" && Array.isArray(mensaje.usuarios)) {
-                    actualizarParticipantes(mensaje.usuarios);
+                const msg = JSON.parse(texto);
+                if (msg.tipo === "presencia" && Array.isArray(msg.usuarios)) {
+                    actualizarParticipantes(msg.usuarios);
                     return;
                 }
-            } catch (error) {
-                // Los mensajes de chat son texto plano, no JSON.
-            }
-            agregarLog(texto);
+            } catch (_) { /* texto plano de chat */ }
+            const esAlerta = texto.includes("desconectado") || texto.includes("inactividad");
+            agregarLog(texto, texto.startsWith("[Sistema]") ? (esAlerta ? "sistema-alerta" : "sistema") : "");
+        }
+
+        function agregarLog(texto, clase) {
+            const li = document.createElement("li");
+            li.textContent = texto;
+            if (clase) li.className = clase;
+            const reg = document.getElementById("registro");
+            reg.appendChild(li);
+            reg.scrollTop = reg.scrollHeight;
         }
 
         function actualizarParticipantes(usuarios) {
             const lista = document.getElementById("participantes");
             lista.innerHTML = "";
-            usuarios.forEach((usuario) => {
+            usuarios.forEach(u => {
                 const li = document.createElement("li");
-                li.textContent = usuario;
+                li.innerHTML = '<span class="user-dot"></span> ' + escaparHtml(u);
                 lista.appendChild(li);
             });
             document.getElementById("cantidadUsuarios").textContent = usuarios.length;
         }
 
-        // Enviar al presionar ENTER
-        document.getElementById("inputNombre").addEventListener("keydown", (e) => {
-            if (e.key === "Enter") conectarAlChat();
-        });
-        document.getElementById("campoMensaje").addEventListener("keydown", (e) => {
-            if (e.key === "Enter") enviarMensaje();
-        });
+        function escaparHtml(texto) {
+            const d = document.createElement("div");
+            d.textContent = texto;
+            return d.innerHTML;
+        }
+
+        // ── Teclas ───────────────────────────────────────────────────────────
+        document.getElementById("inputNombre").addEventListener("keydown",
+            e => { if (e.key === "Enter") conectarAlChat(); });
+        document.getElementById("campoMensaje").addEventListener("keydown",
+            e => { if (e.key === "Enter") enviarMensaje(); });
     </script>
 </body>
 </html>

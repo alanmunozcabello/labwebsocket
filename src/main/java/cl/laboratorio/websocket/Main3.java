@@ -37,9 +37,10 @@ public class Main3 {
             tyrusServer.start();
 
             System.out.println("=================================================");
-            System.out.println("Servicios iniciados (Main3):");
+            System.out.println("Servicios iniciados (Main3 - Heartbeat por actividad):");
             System.out.println(" - Web HTTP:        http://localhost:" + PUERTO_HTTP + "/index3.html");
             System.out.println(" - WebSocket URI:   ws://localhost:" + PUERTO_WS + "/ws/chat");
+            System.out.println(" - Heartbeat:       revision cada " + ChatWebSocketServer3.INTERVALO_REVISION_SEGUNDOS + "s | timeout: " + (ChatWebSocketServer3.TIMEOUT_INACTIVIDAD_MS / 1000) + "s sin actividad");
             System.out.println("=================================================");
             System.out.println("Presiona ENTER para detener...");
 
@@ -49,6 +50,9 @@ public class Main3 {
             System.err.println("Error al iniciar el servidor: " + e.getMessage());
             e.printStackTrace();
         } finally {
+            try {
+                ChatWebSocketServer3.detenerHeartbeat();
+            } catch (Exception ignored) {}
             try {
                 tyrusServer.stop();
             } catch (Exception ignored) {}
